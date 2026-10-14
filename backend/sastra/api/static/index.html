@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SASTRA Console</title>
+<style>
+:root{--bg:#0b0f17;--panel:#121826;--line:#1f2a3d;--text:#e6ebf5;--muted:#8b97ad;--accent:#7c9cff;--ok:#3ecf8e;--warn:#f5b84a;--bad:#ff6b6b}
+@media (prefers-color-scheme: light){:root{--bg:#f6f7fb;--panel:#fff;--line:#e3e7ef;--text:#141a26;--muted:#5d6880;--accent:#3355dd}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif}
+header{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2;flex-wrap:wrap}
+h1{font-size:17px;margin:0;letter-spacing:.08em}.pill{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.warn{color:var(--warn);border-color:var(--warn)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+nav{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;border-bottom:1px solid var(--line)}
+nav button{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;font:inherit}
+nav button.on{background:var(--panel);color:var(--text)}
+main{max-width:900px;margin:0 auto;padding:16px}section{display:none}section.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+input,textarea,select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
+textarea{min-height:70px;resize:vertical}.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
+button.b{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;font:inherit;flex:0 0 auto}
+button.g{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
+button.d{background:var(--bad);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer}
+.msg{white-space:pre-wrap;word-wrap:break-word}.u{border-left:3px solid var(--accent)}.a{border-left:3px solid var(--ok)}
+.muted{color:var(--muted);font-size:13px}.err{color:var(--bad)}pre{white-space:pre-wrap;overflow-x:auto;font-size:13px}
+</style>
+</head>
+<body>
+<header><h1>SASTRA</h1><span id="st" class="pill">not signed in</span><span id="mode" class="pill"></span><span id="ap" class="pill"></span></header>
+<nav id="nav"></nav>
+<main>
+<section id="login" class="on"><div class="card">
+  <p class="muted" id="setupHint"></p>
+  <input id="u" placeholder="Username" autocomplete="username"><p></p>
+  <input id="pw" type="password" placeholder="Password (10+ characters)" autocomplete="current-password"><p></p>
+  <input id="code" placeholder="Setup code (first run only) / TOTP code"><p></p>
+  <div class="row"><button class="b" onclick="doLogin()">Sign in</button><button class="g" onclick="doSetup()">Create owner</button></div>
+  <p id="lerr" class="err"></p></div></section>
+<section id="chat"><div id="msgs"></div><div class="card"><textarea id="in" placeholder="Ask anything, or describe a task…"></textarea>
+  <div class="row" style="margin-top:8px"><select id="route"><option value="auto">Auto route</option><option value="chat">Answer in chat</option><option value="task">Run as task</option></select>
+  <button class="b" onclick="send()">Send</button></div></div></section>
+<section id="tasks"><div class="row"><button class="g" onclick="loadTasks()">Refresh</button></div><div id="tl"></div></section>
+<section id="approvals"><div id="al"></div></section>
+<section id="memory"><div class="card"><textarea id="mem" placeholder="Something to remember (e.g. 'Prefer answers in Hinglish')"></textarea>
+  <div class="row" style="margin-top:8px"><select id="mcat"><option>preference</option><option>project</option><option>fact</option><option>procedure</option></select><button class="b" onclick="addMem()">Save</button></div></div>
+  <input id="mq" placeholder="Search memory" oninput="loadMem()"><div id="ml"></div></section>
+<section id="security"><div class="card"><label class="muted">Autonomy mode</label>
+  <select id="modeSel" onchange="setMode()"><option value="0">0 — Advisory</option><option value="1">1 — Assisted</option><option value="2">2 — Delegated</option><option value="3">3 — Scheduled worker</option></select>
+  <p></p><div class="row"><button class="d" onclick="post('/api/controls/panic').then(refresh)">PANIC: stop everything</button><button class="g" onclick="post('/api/controls/resume').then(refresh)">Resume</button></div></div>
+  <div class="card"><b>Privacy</b><pre id="priv"></pre></div><div class="card"><b>Status</b><pre id="stat"></pre></div></section>
+</main>
+<script>
+const tabs={chat:"Chat",tasks:"Tasks",approvals:"Approvals",memory:"Memory",security:"Security"};
+let token=sessionStorage.getItem("sastra_token")||"", conv=null;
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{})}});
+  const j=await r.json().catch(()=>({}));if(r.status==401&&token){token="";sessionStorage.removeItem("sastra_token");show("login")}if(!r.ok&&r.status!=202)throw new Error(j.error||r.status);return j}
+const post=(p,b={})=>api(p,{method:"POST",body:JSON.stringify(b)});
+function show(t){document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id==t));document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==t));
+  if(t=="tasks")loadTasks();if(t=="approvals")loadAp();if(t=="memory")loadMem();if(t=="security")loadSec()}
+$("nav").innerHTML=Object.entries(tabs).map(([k,v])=>`<button data-t="${k}" onclick="show('${k}')">${v}</button>`).join("");
+async function doSetup(){try{await post("/api/setup",{username:$("u").value,password:$("pw").value,setup_code:$("code").value});$("code").value="";await doLogin()}catch(e){$("lerr").textContent=e.message}}
+async function doLogin(){try{const j=await post("/api/auth/login",{username:$("u").value,password:$("pw").value,device_name:"web console",totp:$("code").value||null});
+  token=j.token;sessionStorage.setItem("sastra_token",token);show("chat");refresh()}catch(e){$("lerr").textContent=e.message}}
+async function refresh(){if(!token)return;try{const s=await api("/api/status");
+  $("st").textContent={offline:"Offline mode",local_model:"Local model",cloud_model:"Cloud model"}[s.model_state];$("st").className="pill "+(s.model_state=="offline"?"warn":"ok");
+  $("mode").textContent="Mode "+s.autonomy_mode+" · "+s.autonomy_mode_name+(s.agents_paused?" · PAUSED":"")+(s.internet?"":" · no internet");
+  $("ap").textContent=s.pending_approvals+" approvals";$("ap").className="pill "+(s.pending_approvals?"warn":"");$("modeSel").value=s.autonomy_mode}catch(e){}}
+function bubble(cls,text){const d=document.createElement("div");d.className="card msg "+cls;d.textContent=text;$("msgs").appendChild(d);d.scrollIntoView({block:"end"});return d}
+async function send(){const text=$("in").value.trim();if(!text)return;$("in").value="";bubble("u",text);const out=bubble("a","…");let acc="";
+  const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({message:text,conversation_id:conv,route:$("route").value})});
+  if(!r.ok){out.textContent="Error: "+(await r.text());return}
+  const rd=r.body.getReader(),dec=new TextDecoder();let buf="";
+  while(true){const{value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+    while((i=buf.indexOf("\n\n"))>=0){const blk=buf.slice(0,i);buf=buf.slice(i+2);const data=blk.split("\n").find(l=>l.startsWith("data:"));if(!data)continue;const e=JSON.parse(data.slice(5));
+      if(e.event=="meta")conv=e.conversation_id;if(e.event=="delta"){acc+=e.text;out.textContent=acc}
+      if(e.event=="done"){const m=document.createElement("div");m.className="muted";m.textContent=`${e.provider}/${e.model}`+(e.cost_usd?` · $${e.cost_usd.toFixed(5)}`:"")+(e.latency_ms?` · ${e.latency_ms} ms`:"");out.appendChild(m)}
+      if(e.event=="error")out.textContent="Error: "+e.error}}refresh()}
+async function loadTasks(){const j=await api("/api/tasks");$("tl").innerHTML=j.tasks.map(t=>`<div class="card"><b>${esc(t.title)}</b> <span class="pill">${t.state}</span> <span class="muted">${t.kind}</span>
+  ${t.error?`<div class="err">${esc(t.error)}</div>`:""}${t.result&&t.result.summary?`<details><summary>Result</summary><pre>${esc(t.result.summary)}</pre></details>`:""}
+  ${["COMPLETED","FAILED","CANCELLED"].includes(t.state)?(t.state=="FAILED"?`<button class="g" onclick="post('/api/tasks/${t.id}/retry').then(loadTasks)">Retry</button>`:""):`<button class="g" onclick="post('/api/tasks/${t.id}/cancel').then(loadTasks)">Cancel</button>`}
+  ${t.state=="NEEDS_USER_INPUT"?`<p class="muted">${esc((t.result||{}).question)}</p><div class="row"><input id="ans_${t.id}"><button class="b" onclick="post('/api/tasks/${t.id}/input',{answer:$('ans_${t.id}').value}).then(loadTasks)">Answer</button></div>`:""}</div>`).join("")||"<p class='muted'>No tasks yet.</p>"}
+async function loadAp(){const j=await api("/api/approvals");$("al").innerHTML=j.pending.map(a=>`<div class="card"><b>${esc(a.tool)}</b> <span class="pill warn">${a.risk}</span><p>${esc(a.reason)}</p><pre>${esc(a.args)}</pre>
+  <div class="row"><button class="b" onclick="decide('${a.id}',true)">Approve once</button><button class="g" onclick="decide('${a.id}',false)">Reject</button></div></div>`).join("")||"<p class='muted'>Nothing waiting for approval.</p>"}
+async function decide(id,ok){await post(`/api/approvals/${id}/decide`,{approve:ok});loadAp();refresh()}
+async function addMem(){try{await post("/api/memory",{content:$("mem").value,category:$("mcat").value});$("mem").value="";loadMem()}catch(e){alert(e.message)}}
+async function loadMem(){const q=$("mq").value;const j=await api("/api/memory"+(q?"?q="+encodeURIComponent(q):""));const list=j.results||j.memories;
+  $("ml").innerHTML=list.map(m=>`<div class="card"><span class="pill">${m.category}</span> <span class="pill ${m.status=="active"?"ok":"warn"}">${m.status}</span><p>${esc(m.content)}</p>
+  <span class="muted">${esc(m.source)} · ${new Date(m.updated_at*1000).toLocaleString()}</span> <button class="g" onclick="api('/api/memory/${m.id}',{method:'DELETE'}).then(loadMem)">Delete</button>
+  ${m.status!="active"?`<button class="g" onclick="post('/api/memory/${m.id}/approve').then(loadMem)">Approve</button>`:""}</div>`).join("")||"<p class='muted'>Empty.</p>"}
+async function setMode(){await api("/api/controls",{method:"PUT",body:JSON.stringify({autonomy_mode:+$("modeSel").value})});refresh()}
+async function loadSec(){$("priv").textContent=JSON.stringify(await api("/api/privacy"),null,2);$("stat").textContent=JSON.stringify(await api("/api/status"),null,2)}
+api("/api/setup").then(j=>{$("setupHint").textContent=j.owner_exists?"Sign in to your SASTRA.":"First run: choose a username and password and enter the setup code shown in the server log."});
+if(token){show("chat");refresh()}setInterval(refresh,15000);
+</script>
+</body>
+</html>
