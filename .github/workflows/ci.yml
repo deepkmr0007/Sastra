@@ -22,9 +22,9 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Lint
-        run: ruff check sastra tests
+        run: ruff check --output-format=github sastra tests
       - name: Security scan (code)
-        run: bandit -q -ll -r sastra -c pyproject.toml
+        run: bandit -q -ll -r sastra -c pyproject.toml -f custom --msg-template "::error file={relpath},line={line}::{test_id} {msg}"
       - name: Dependency audit
         run: pip-audit -r requirements.txt
       - name: Tests (includes adversarial prompt-injection and sandbox tests)
