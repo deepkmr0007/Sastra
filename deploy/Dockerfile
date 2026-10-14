@@ -10,6 +10,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
     && useradd --uid 10001 --create-home --shell /usr/sbin/nologin sastra \
     && mkdir -p /data && chown sastra:sastra /data
 
+# Docker CLI (client only) so the server can start sandbox containers through the
+# socket proxy. Set --build-arg DOCKER_CLI=0 to skip (code tools then refuse to run).
+ARG DOCKER_CLI=1
+ARG DOCKER_CLI_VERSION=27.3.1
+RUN if [ "$DOCKER_CLI" = "1" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends curl && \
+      curl -fsSL "https://download.docker.com/linux/static/stable/$(uname -m)/docker-${DOCKER_CLI_VERSION}.tgz" \
+        | tar -xz -C /usr/local/bin --strip-components=1 docker/docker && \
+      apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*; \
+    fi
+
 WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install -r requirements.txt

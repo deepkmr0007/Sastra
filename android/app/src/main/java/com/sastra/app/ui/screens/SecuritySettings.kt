@@ -141,6 +141,16 @@ fun SettingsScreen(vm: AppViewModel) {
                         Button(onClick = { vm.sync() }) { Text("Sync now") }
                         OutlinedButton(onClick = { vm.logout() }) { Text("Sign out") }
                     }
+                    val secret = vm.totpSecret
+                    if (secret == null) {
+                        TextButton(onClick = { vm.beginTotp() }) { Text("Enable 2-step login (authenticator app)") }
+                    } else {
+                        Muted("Add this key to your authenticator app (Google Authenticator, Aegis…) as a time-based key, then type the 6-digit code:")
+                        androidx.compose.foundation.text.selection.SelectionContainer { Mono(secret) }
+                        var totp by remember { mutableStateOf("") }
+                        Field(totp, { totp = it }, "6-digit code")
+                        Button(onClick = { vm.confirmTotp(totp) }, enabled = totp.length >= 6) { Text("Confirm") }
+                    }
                 } else {
                     Field(user, { user = it }, "Username")
                     Field(pw, { pw = it }, "Password (10+ characters)", password = true)

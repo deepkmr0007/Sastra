@@ -136,6 +136,14 @@ class AppViewModel(val repo: Repository) : ViewModel() {
         go(Screen.HOME)
     }
 
+    var totpSecret by mutableStateOf<String?>(null)
+    fun beginTotp() = launchSafe("2-step") { totpSecret = repo.post("/api/auth/totp/begin").optString("secret") }
+    fun confirmTotp(code: String) = launchSafe("2-step") {
+        repo.post("/api/auth/totp/confirm", JSONObject().put("code", code.trim()))
+        totpSecret = null
+        message = "2-step login enabled"
+    }
+
     fun logout() = launchSafe { repo.logout(); message = "Signed out" }
 
     fun sync() = launchSafe("Sync") { message = repo.sync(); refreshConversations() }
