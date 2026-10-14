@@ -25,7 +25,9 @@ _INJECTION_RULES: list[tuple[str, float, re.Pattern]] = [
     ("credential_request", 0.3, re.compile(r"(?i)\b(enter|provide|reveal|print|show)\b.{0,30}\b(api key|password|otp|secret key|seed phrase)")),
 ]
 
-_ZERO_WIDTH = re.compile("[​-‏‪-‮⁠-⁤﻿]")
+# Zero-width and bidirectional control characters (built with chr() so the source holds none).
+_ZERO_WIDTH = re.compile("[" + "".join(f"{chr(a)}-{chr(b)}" for a, b in
+                                       ((0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x2064), (0xFEFF, 0xFEFF))) + "]")
 
 
 @dataclass
