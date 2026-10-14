@@ -28,7 +28,11 @@ jobs:
       - name: Dependency audit
         run: pip-audit -r requirements.txt
       - name: Tests (includes adversarial prompt-injection and sandbox tests)
-        run: python -W ignore::ResourceWarning -m unittest discover -s tests -t . -v
+        run: |
+          set -o pipefail
+          python -W ignore::ResourceWarning -m unittest discover -s tests -t . -v 2>&1 | tee test-output.txt
+          echo "::notice::$(grep -E '^(Ran|OK|FAILED)' test-output.txt | tr '\n' ' ') | skipped: $(grep -c 'skipped' test-output.txt)"
+          grep "skipped" test-output.txt | sed 's/^/::notice::SKIP /' || true
 
   android:
     runs-on: ubuntu-latest
