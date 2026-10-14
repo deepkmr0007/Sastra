@@ -68,7 +68,11 @@ jobs:
         run: docker build -t sastra:ci -f deploy/Dockerfile .
       - name: Container smoke test
         run: |
-          docker run -d --name s -e SASTRA_JWT_SECRET=ci-secret-ci-secret-ci-secret-1234 -p 8787:8787 sastra:ci
-          for i in $(seq 1 30); do curl -fs localhost:8787/health && break; sleep 1; done
-          curl -fs localhost:8787/health
-          docker logs s | grep -q "setup code"
+          set +e
+          out=$(docker run -d --name s -e SASTRA_JWT_SECRET=ci-secret-ci-secret-ci-secret-1234 -p 8787:8787 sastra:ci 2>&1)
+          if [ $? -ne 0 ]; then echo "::error::docker run failed: $(echo "$out" | tr '\n' ' ')"; docker images | head; exit 1; fi
+          for i in $(seq 1 40); do curl -fs localhost:8787/health && break; sleep 1; done
+          if ! curl -fs localhost:8787/health; then
+            echo "::error::health check failed: $(docker logs s 2>&1 | tail -20 | tr '\n' ' ')"; exit 1
+          fi
+          docker logs s 2>&1 | grep -q "setup code" || { echo "::error::no setup code in logs"; exit 1; }
