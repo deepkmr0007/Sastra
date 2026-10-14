@@ -40,7 +40,7 @@ Defaults: Claude Haiku 5.5 for simple turns, Claude Sonnet 5.5 for hard work; an
 
 ## Highest-risk engineering decisions (watch these)
 1. **Docker socket access** for the sandbox (even through a filtering proxy) is powerful — a compromised server could start a privileged container. Mitigate with rootless Docker or a separate sandbox VM (roadmap).
-2. **Android code was not compiled in the build environment** (no SDK). CI compiles it; the first CI run may surface small compile errors.
+2. **Android app is CI-built but not yet tested on a device**; instrumented tests are the next P0 item.
 3. **Heuristic prompt-injection detection** is bypassable; safety rests on the gateway, roles and approvals, not on detection.
 4. **SQLite single connection + lock** limits concurrency; fine for one owner, not for teams.
 5. **SSRF guard** resolves DNS before urllib connects (TOCTOU / DNS rebinding window).

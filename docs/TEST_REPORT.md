@@ -1,8 +1,15 @@
 # Test Report — SASTRA 1.0 (14 Oct 2026)
 
-Every number below is from an actual run in the build environment. Nothing was assumed.
+Every number below is from an actual run. Nothing was assumed.
 
-## Backend — 101 tests, all passing (≈22 s)
+## GitHub Actions (github.com/deepkmr0007/Sastra) — all 3 jobs green
+| Job | Result |
+|---|---|
+| backend | ruff lint clean · bandit (medium+) clean · pip-audit clean · **104 tests, 0 failures** on Python 3.12 (1 skipped: network-namespace test, runner has no unprivileged user namespaces — it passes in the build environment) — includes **3 real Docker sandbox tests** (runs as uid 65534, no network, read-only root, timeout kills the container) |
+| android | **compiles**, JVM unit tests pass, lint runs, **debug APK built (≈11.5 MB artifact `sastra-debug-apk`)** |
+| docker | server image builds; container starts, `/health` OK, setup code printed |
+
+## Backend in the build environment — 101 tests passing (≈22 s; +3 Docker tests that run in CI)
 `cd backend && python -m unittest discover -s tests -t .`
 
 | Suite | Tests | Covers |
@@ -21,7 +28,7 @@ Every number below is from an actual run in the build environment. Nothing was a
 
 ## Android
 - Pure-Kotlin engine compiled with Kotlin 2.0.21 (bundled in Gradle) and **10/10 JUnit tests passed** (CalculatorTest 5, LocalEngineTest 5).
-- UI, data and worker layers: **not compiled here** (no Android SDK available). CI (`.github/workflows/ci.yml`) compiles, runs unit tests, lints and uploads the APK.
+- Full app (UI, data, worker layers) compiled and packaged by CI on the first run.
 
 ## Not run here
-Docker sandbox execution · PostgreSQL · live Anthropic/OpenAI/Brave/Tavily calls · Android instrumented tests · `ruff`/`bandit`/`pip-audit` (packages not installable here; configured in CI). Release gate for "production-ready": all CI jobs green + the P0 items in ROADMAP.md.
+PostgreSQL · live Anthropic/OpenAI/Brave/Tavily calls · Android instrumented tests · on-device behaviour of the APK (needs a phone or emulator). Release gate for "production-ready": all CI jobs green + the P0 items in ROADMAP.md.

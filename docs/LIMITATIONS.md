@@ -3,9 +3,9 @@
 Stated plainly so nothing is mistaken for a capability it does not have.
 
 ## Build/verification gaps
-- **The Android app was not compiled in the build environment** (no Android SDK; Google's Maven repository was blocked). The pure-Kotlin engine (calculator, offline engine) **was** compiled and its 10 JVM unit tests passed using the Kotlin compiler bundled with Gradle. The UI/data layers will first compile in GitHub Actions; expect possibly a few small fixes on the first run.
+- **The Android app compiles and the APK builds in CI**, but it has not yet been exercised on a real phone or emulator (no instrumented UI tests yet).
 - **PostgreSQL** support is written but untested; SQLite is the tested path.
-- **Docker sandbox** command construction is implemented but was not executed (no Docker daemon in the build environment). The weak process sandbox was executed and tested (timeout, memory cap, environment isolation, network namespace).
+- **Docker sandbox** is tested in CI (uid, no network, read-only root, timeout). gVisor (`runsc`) mode is not tested. The weak process sandbox is tested in the build environment.
 - **Real model providers** were tested against faithful local fakes of the OpenAI-compatible and Anthropic streaming protocols, not against live APIs (no keys in the build environment).
 - **Live web research** was tested with a controlled set of pages; real-site extraction quality varies (script-heavy pages yield little text; scanned PDFs need OCR, which is not built in).
 

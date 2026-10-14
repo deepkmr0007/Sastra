@@ -1,8 +1,8 @@
 # Roadmap (prioritised)
 
 **P0 — next (reliability & verification)**
-1. First green Android CI build; fix any compile errors; instrumented smoke test on an emulator (login, chat, offline queue, approvals).
-2. Run the Docker sandbox path for real; add gVisor (`runsc`) to the default compose stack.
+1. ✅ Green Android CI build. Next: instrumented smoke test on an emulator (login, chat, offline queue, approvals).
+2. ✅ Docker sandbox tested in CI. Next: add gVisor (`runsc`) to the default compose stack.
 3. Live-provider integration tests behind a secret (Anthropic + one OpenAI-compatible), with a tiny daily budget.
 4. PostgreSQL CI job (service container) to validate ADR-003.
 
