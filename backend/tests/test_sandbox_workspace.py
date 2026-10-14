@@ -136,3 +136,39 @@ class WorkspaceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DockerSandboxTests(unittest.TestCase):
+    """Runs only where a Docker daemon is available (e.g. GitHub Actions)."""
+
+    def setUp(self):
+        from sastra.sandbox.runner import DockerRunner
+        if not DockerRunner.available():
+            self.skipTest("Docker daemon not available")
+        self.runner = DockerRunner(memory_mb=256)
+        self.app, _ = make_app(sandbox=self.runner)
+        self.pid = self.app.projects.create("Docker", kind="software")["id"]
+        self.dir = self.app.projects.dir(self.pid)
+        os.chmod(self.dir, 0o777)  # container runs as uid 65534
+
+    def run_code(self, code, timeout=120):
+        (self.dir / "t.py").write_text(code)
+        return self.runner.run(self.dir, "python", ["t.py"], timeout)
+
+    def test_runs_isolated(self):
+        r = self.run_code("import os\nprint('uid', os.getuid())\nprint(sum(range(10)))")
+        self.assertTrue(r.ok(), r.stderr)
+        self.assertIn("uid 65534", r.stdout)
+        self.assertEqual(r.isolation, "strong")
+
+    def test_no_network_and_read_only_root(self):
+        code = ("import socket\ntry:\n socket.create_connection(('1.1.1.1',80),timeout=3);print('NET')\n"
+                "except OSError:\n print('NONET')\n"
+                "try:\n open('/etc/x','w');print('WROTE')\nexcept OSError:\n print('RO')\n")
+        r = self.run_code(code)
+        self.assertIn("NONET", r.stdout)
+        self.assertIn("RO", r.stdout)
+
+    def test_timeout(self):
+        r = self.run_code("while True: pass", timeout=5)
+        self.assertTrue(r.timed_out)

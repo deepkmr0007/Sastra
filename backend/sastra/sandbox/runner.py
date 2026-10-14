@@ -20,6 +20,7 @@ import shutil
 import signal
 import subprocess
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,8 +72,8 @@ class DockerRunner:
         except Exception:  # noqa: BLE001
             return False
 
-    def command(self, workdir: Path, language: str, entry: list[str], network: str) -> list[str]:
-        cmd = ["docker", "run", "--rm", "-i",
+    def command(self, workdir: Path, language: str, entry: list[str], network: str, name: str = "sastra-run") -> list[str]:
+        cmd = ["docker", "run", "--rm", "-i", "--name", name,
                "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
                "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
                "--pids-limit", str(self.pids), "--memory", f"{self.memory_mb}m", "--memory-swap", f"{self.memory_mb}m",
@@ -89,8 +90,16 @@ class DockerRunner:
     def run(self, workdir: Path, language: str, entry: list[str], timeout_s: int, network: str = "none", stdin: bytes = b"") -> RunResult:
         if network == "packages" and not self.egress_proxy:
             raise SandboxUnavailable("Package downloads need the allowlisted egress proxy (deploy/squid). Not configured.")
-        return _execute(self.command(workdir, language, entry, network), workdir, timeout_s, self.backend, self.isolation,
-                        env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")}, stdin=stdin)
+        name = "sastra-run-" + uuid.uuid4().hex[:12]
+        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+        if os.environ.get("DOCKER_HOST"):
+            env["DOCKER_HOST"] = os.environ["DOCKER_HOST"]
+
+        def kill_container():  # killing the CLI does not stop the container; stop it explicitly
+            subprocess.run(["docker", "kill", name], capture_output=True, timeout=30, env=env)  # noqa: S603,S607
+
+        return _execute(self.command(workdir, language, entry, network, name), workdir, timeout_s, self.backend,
+                        self.isolation, env=env, stdin=stdin, on_timeout=kill_container)
 
 
 class ProcessRunner:
@@ -136,7 +145,7 @@ class ProcessRunner:
 
 
 def _execute(cmd: list[str], cwd: Path, timeout_s: int, backend: str, isolation: str, env: dict,
-             preexec=None, stdin: bytes = b"") -> RunResult:
+             preexec=None, stdin: bytes = b"", on_timeout=None) -> RunResult:
     started = time.perf_counter()
     proc = subprocess.Popen(cmd, cwd=str(cwd), env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,  # noqa: S603
                             stderr=subprocess.PIPE, preexec_fn=preexec, start_new_session=preexec is None)
@@ -145,6 +154,11 @@ def _execute(cmd: list[str], cwd: Path, timeout_s: int, backend: str, isolation:
         out, err = proc.communicate(input=stdin, timeout=timeout_s)
     except subprocess.TimeoutExpired:
         timed_out = True
+        if on_timeout:
+            try:
+                on_timeout()
+            except Exception:  # noqa: BLE001
+                pass
         try:
             os.killpg(proc.pid, signal.SIGKILL)
         except (ProcessLookupError, PermissionError):
