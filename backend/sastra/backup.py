@@ -68,7 +68,7 @@ def restore_backup(backup_file: Path, data_dir: Path, key_b64: str) -> dict:
                 raise ValueError(f"Unsafe path in backup: {m.name}")
             if m.issym() or m.islnk() or m.isdev():
                 raise ValueError(f"Links/devices not allowed in backup: {m.name}")
-        tar.extractall(data_dir, filter="data")
+        tar.extractall(data_dir, filter="data")  # nosec B202 - members validated above + data filter
     manifest = json.loads((data_dir / "manifest.json").read_text())
     (data_dir / "manifest.json").unlink()
     return {"restored_from": str(backup_file), "manifest": manifest, "previous_data_kept_with_suffix": f".pre-restore-{stamp}"}

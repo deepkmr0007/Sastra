@@ -105,7 +105,7 @@ def totp_code(secret_b32: str, at: float | None = None, step: int = 30, digits: 
     padded = secret_b32 + "=" * (-len(secret_b32) % 8)
     key = base64.b32decode(padded.upper())
     counter = int((at if at is not None else time.time()) // step)
-    mac = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    mac = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()  # noqa: S324  # nosec B324 - RFC 6238 mandates HMAC-SHA1
     offset = mac[-1] & 0x0F
     code = (struct.unpack(">I", mac[offset:offset + 4])[0] & 0x7FFFFFFF) % (10 ** digits)
     return str(code).zfill(digits)

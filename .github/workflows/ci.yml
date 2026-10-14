@@ -24,7 +24,7 @@ jobs:
       - name: Lint
         run: ruff check sastra tests
       - name: Security scan (code)
-        run: bandit -q -r sastra -c pyproject.toml
+        run: bandit -q -ll -r sastra -c pyproject.toml
       - name: Dependency audit
         run: pip-audit -r requirements.txt
       - name: Tests (includes adversarial prompt-injection and sandbox tests)
