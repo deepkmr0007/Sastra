@@ -1,0 +1,24 @@
+# Automatic HTTPS (Let's Encrypt) for your domain. For a home server without a
+# domain, use Tailscale and set SASTRA_DOMAIN to the machine's tailnet name.
+{$SASTRA_DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	request_body {
+		max_size 12MB
+	}
+	reverse_proxy sastra:8787 {
+		flush_interval -1
+	}
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers>Authorization delete
+			}
+		}
+	}
+}

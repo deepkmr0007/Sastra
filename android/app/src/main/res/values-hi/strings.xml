@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SASTRA</string>
+    <string name="channel_tasks">कार्य</string>
+    <string name="channel_approvals">अनुमोदन</string>
+    <string name="channel_security">सुरक्षा चेतावनी</string>
+    <string name="unlock_title">SASTRA खोलें</string>
+    <string name="unlock_subtitle">पुष्टि करें कि यह आप हैं</string>
+</resources>

@@ -1,0 +1,79 @@
+# SASTRA production stack: HTTPS reverse proxy + API/worker.
+#   cp deploy/.env.example deploy/.env   # then edit it
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#   docker compose -f deploy/docker-compose.yml logs sastra | grep "setup code"
+#
+# Code sandbox: the server starts sandbox containers through the Docker socket
+# proxy below, which only allows container create/start/wait/logs/remove — not
+# full Docker API access. See docs/THREAT_MODEL.md (T7).
+
+services:
+  sastra:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file: .env
+    environment:
+      DOCKER_HOST: tcp://docker-proxy:2375
+      SASTRA_SANDBOX_BACKEND: docker
+      SASTRA_SANDBOX_EGRESS_PROXY: http://egress:3128
+    volumes:
+      - sastra-data:/data
+      # The sandbox mounts project workspaces by host path, so the data dir must be
+      # a host bind mount at the same path in production if you use the sandbox:
+      # - /srv/sastra:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [internal, egress-net]
+    depends_on: [docker-proxy]
+
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      SASTRA_DOMAIN: ${SASTRA_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    restart: unless-stopped
+    networks: [internal, public]
+
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    environment:
+      CONTAINERS: 1
+      POST: 1
+      IMAGES: 1
+      INFO: 1
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+      BUILD: 0
+      SWARM: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [internal]
+    restart: unless-stopped
+
+  # Allowlisted egress for sandbox package installs (pip/npm registries only).
+  egress:
+    image: ubuntu/squid:latest
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+    networks: [egress-net, public]
+    restart: unless-stopped
+
+volumes:
+  sastra-data:
+  caddy-data:
+
+networks:
+  internal:
+    internal: true
+  egress-net:
+    name: sastra-egress
+    internal: true
+  public: {}

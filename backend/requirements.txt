@@ -1,0 +1,11 @@
+# Runtime (pinned minimums; CI installs latest compatible and pip-audit checks them)
+starlette>=0.47,<2
+uvicorn[standard]>=0.30
+pydantic>=2.7,<3
+PyJWT>=2.8,<3
+cryptography>=43
+pypdf>=4.3
+openpyxl>=3.1
+python-docx>=1.1
+# Optional: PostgreSQL adapter (ADR-003)
+# psycopg[binary]>=3.2

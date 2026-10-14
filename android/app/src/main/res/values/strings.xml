@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SASTRA</string>
+    <string name="channel_tasks">Tasks</string>
+    <string name="channel_approvals">Approvals</string>
+    <string name="channel_security">Security alerts</string>
+    <string name="unlock_title">Unlock SASTRA</string>
+    <string name="unlock_subtitle">Confirm it\'s you</string>
+</resources>

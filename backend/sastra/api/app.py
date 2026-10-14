@@ -507,6 +507,11 @@ def build(app: App | None = None) -> Starlette:
         b = await _body(request, MemoryPatch)
         return core.memory.update(request.path_params["mid"], actor(p), **b.model_dump(exclude_none=True))
 
+    @route("POST", "/api/memory/{mid}/update")  # same as PATCH, for clients without PATCH (Android HttpURLConnection)
+    async def memory_patch_post(request, p):
+        b = await _body(request, MemoryPatch)
+        return core.memory.update(request.path_params["mid"], actor(p), **b.model_dump(exclude_none=True))
+
     @route("DELETE", "/api/memory/{mid}")
     async def memory_delete(request, p):
         return {"deleted": core.memory.delete(request.path_params["mid"], actor(p))}

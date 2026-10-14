@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original mark: a six-point star (shatkona) of two triangles around a dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7C9CFF"
+        android:strokeWidth="4"
+        android:strokeLineJoin="round"
+        android:pathData="M54,30 L75,66 L33,66 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#3ECF8E"
+        android:strokeWidth="4"
+        android:strokeLineJoin="round"
+        android:pathData="M54,78 L33,42 L75,42 Z" />
+    <path
+        android:fillColor="#E6EBF5"
+        android:pathData="M54,54m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+</vector>
