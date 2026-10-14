@@ -275,7 +275,7 @@ def h_sheet(ctx, a: SheetIn):
             info["top"] = sorted({str(v) for v in vals if v not in (None, "")})[:5]
         cols.append(info)
     dupes = len(body) - len({tuple(map(str, r)) for r in body})
-    return {"rows": len(body), "columns": cols, "duplicate_rows": dupes, "sample": [dict(zip(header, map(str, r))) for r in body[:5]]}
+    return {"rows": len(body), "columns": cols, "duplicate_rows": dupes, "sample": [dict(zip(header, map(str, r), strict=False)) for r in body[:5]]}
 
 
 def h_doc(ctx, a: DocIn):

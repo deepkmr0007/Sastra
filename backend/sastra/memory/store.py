@@ -58,7 +58,7 @@ def _jaccard(a: set, b: set) -> float:
 def _cosine(a: list[float], b: list[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
 
@@ -295,7 +295,7 @@ class MemoryStore:
                 q_vec = None
         hits = []
         t_now = now()
-        for r, kw in zip(rows, bm25):
+        for r, kw in zip(rows, bm25, strict=True):
             kw_n = kw / top
             sem = _cosine(q_vec, loads(r["embedding"], [])) if q_vec and r["embedding"] else 0.0
             age_days = (t_now - r["updated_at"]) / 86400

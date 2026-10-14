@@ -268,9 +268,9 @@ def build(app: App | None = None) -> Starlette:
                     result = await fn(request, principal)
                 except HTTPError as e:
                     return _json({"error": e.message}, e.status)
-                except (AuthError,) as e:
+                except AuthError as e:
                     return _json({"error": str(e)}, 403)
-                except (KeyError,) as e:
+                except KeyError as e:
                     return _json({"error": f"Not found: {e}"}, 404)
                 except (ValueError, WorkspaceError, InvalidTransition, MemoryRejected, ToolError, NetworkPolicyError,
                         ResearchUnavailable, BudgetExceeded, PermissionError) as e:

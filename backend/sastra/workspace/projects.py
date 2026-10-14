@@ -157,7 +157,7 @@ class Projects:
 
     def log(self, pid: str, limit: int = 50) -> list[dict]:
         out = self._git(pid, "log", f"-{limit}", "--pretty=format:%H%x1f%ct%x1f%s")
-        return [dict(zip(("commit", "ts", "message"), ln.split("\x1f"))) for ln in out.splitlines() if ln]
+        return [dict(zip(("commit", "ts", "message"), ln.split("\x1f"), strict=False)) for ln in out.splitlines() if ln]
 
     def diff(self, pid: str, commit: str | None = None) -> str:
         if commit and not re.fullmatch(r"[0-9a-f]{7,40}", commit):
